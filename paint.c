@@ -40,7 +40,7 @@ void clear_command(void);
 void clear_screen(void);
 
 // enum for interpret_command results
-typedef enum res{ EXIT, LINE, RECT, CIRCLE, UNDO, LOAD, SAVE, UNKNOWN, ERRNONINT, ERRLACKARGS, NOCOMMAND, NOFILE} Result;
+typedef enum res{ EXIT, LINE, RECT, CIRCLE, UNDO, LOAD, SAVE, CHPEN, UNKNOWN, ERRNONINT, ERRLACKARGS, NOCOMMAND, NOFILE} Result;
 // Result 型に応じて出力するメッセージを返す
 char *strresult(Result res);
 
@@ -106,7 +106,7 @@ int main(int argc, char **argv)
         clear_command();
         printf("%s\n",strresult(r));
         // LINEの場合はHistory構造体に入れる
-        if (r == LINE || r == RECT || r == CIRCLE) {
+        if (r == LINE || r == RECT || r == CIRCLE || r == CHPEN) {
             // [*]
             push_command(&his,buf);
         }
@@ -144,6 +144,7 @@ void reset_canvas(Canvas *c)
 {
     const int width = c->width;
     const int height = c->height;
+    c->pen='*';
     memset(c->canvas[0], ' ', width*height*sizeof(char));
 }
 
@@ -344,26 +345,32 @@ Result interpret_command(const char *command, History *his, Canvas *c)
         if((fp=fopen(filename, "r"))==NULL){
 	        return NOFILE;
         }else{
-
             while(1){
                 
-                if(fgets(buf, his->bufsize, fp) == NULL) break;
-                
+                if(fgets(buf, his->bufsize, fp) == NULL){
+                    break;
+                }
                 const Result r = interpret_command(buf, his, c);
-
-                if (r == EXIT) break;
-
+                if (r == EXIT){
+                    break;
+                }
                 // LINEの場合はHistory構造体に入れる
                 if (r == LINE || r == RECT || r == CIRCLE) {
                     push_command(his,buf);
                 }
             }
-
         }
         fclose(fp);
         return LOAD;
     }
 
+    if(strcmp(s, "chpen")==0){
+        char *token=strtok(NULL, " ");
+        if(token!=NULL){
+            c->pen = token[0];
+        }
+        return CHPEN;
+    }
     if (strcmp(s, "save") == 0) {
         s = strtok(NULL, " ");
         save_history(s, his);
@@ -442,6 +449,8 @@ char *strresult(Result res){
     return "1 circle drawn";
     case LOAD:
     return "successfully loaded";
+    case CHPEN:
+    return "pen changed";
     case UNDO:
 	return "undo!";
     case UNKNOWN:
