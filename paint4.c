@@ -142,13 +142,13 @@ Canvas *init_canvas(int width,int height, char pen)
     }
 
     int *ctmp = (int *)malloc(width*height*sizeof(int));
-    memset(ctmp, 39, width*height*sizeof(char));
+    memset(ctmp, 0, width*height*sizeof(char));
     for (int i = 0 ; i < width ; i++){
 	    new->colormap[i] = ctmp + i * height;
     }
     
     new->pen = pen;
-    new->color=39;
+    new->color=0;
     return new;
 }
 
@@ -157,8 +157,9 @@ void reset_canvas(Canvas *c)
     const int width = c->width;
     const int height = c->height;
     c->pen='*';
-    c->color=39;
+    c->color=0;
     memset(c->canvas[0], ' ', width*height*sizeof(char));
+    memset(c->colormap[0], 0, width*height*sizeof(int));
 }
 
 
@@ -183,7 +184,7 @@ void print_canvas(Canvas *c)
             const char c = canvas[x][y];
             printf("\x1b[%dm",colormap[x][y]);
             putchar(c);
-            printf("\x1b[39m");
+            printf("\x1b[0m");
         }
         printf("|\n");
     }
@@ -241,7 +242,7 @@ void draw_line(Canvas *c, const int x0, const int y0, const int x1, const int y1
     }
 }
 
-void draw_circle(Canvas *c, const int x0, const int y0, const int a, const int b){
+void draw_circle(Canvas *c, const int x0, const int y0, const int a, const int b, const int incolor){
     const int width = c->width;
     const int height = c->height;
     char pen=c->pen;
@@ -251,6 +252,9 @@ void draw_circle(Canvas *c, const int x0, const int y0, const int a, const int b
             if(pow(a-0.5,2) < pow(x-x0,2)+pow((y-y0)*a/b,2) && pow(x-x0,2)+pow((y-y0)*a/b,2)<pow(a+0.5,2)){
                 c->canvas[x][y]=pen;
                 c->colormap[x][y]=color;
+            }else if(incolor && pow(x-x0,2)+pow((y-y0)*a/b,2)<=pow(a-0.5,2)){
+                c->canvas[x][y]=' ';
+                c->colormap[x][y]=incolor;
             }
         }
     }
@@ -311,10 +315,27 @@ Result interpret_command(const char *command, History *his, Canvas *c)
     if(strcmp(s, "rect")==0){
         int p[4] = {0}; // p[0]: x0, p[1]: y0, p[2]: width, p[3]: height 
         char *b[4];
+        char *color;
+        int incheck=0;
+        int incolor=0;
         for (int i = 0 ; i < 4; i++){
             b[i] = strtok(NULL, " ");
             if (b[i] == NULL){
                 return ERRLACKARGS;
+            }
+        }
+        if((color=strtok(NULL, ""))!=NULL){
+            char colorlist[8]={'k','r','g','y','b','m','c','w'};
+            int colornum[8]={40,41,42,43,44,45,46,47};
+            for(int i=0; i<8; i++){
+                if(color[0]==colorlist[i]){
+                    incolor=colornum[i];
+                    incheck=1;
+                    break;
+                }
+            }
+            if(!incheck){
+                return NOCOLOR;
             }
         }
         for (int i = 0 ; i < 4 ; i++){
@@ -325,20 +346,48 @@ Result interpret_command(const char *command, History *his, Canvas *c)
             }
             p[i] = (int)v;
         }
-        draw_line(c,p[0],p[1],p[0]+p[2], p[1]);
-        draw_line(c,p[0]+p[2], p[1],p[0]+p[2], p[1]+p[3]);
-        draw_line(c,p[0]+p[2], p[1]+p[3], p[0], p[1]+p[3]);
-        draw_line(c,p[0], p[1]+p[3], p[0],p[1]);
+        draw_line(c,p[0],p[1],p[0]+p[2]-1, p[1]);
+        draw_line(c,p[0]+p[2]-1, p[1],p[0]+p[2]-1, p[1]+p[3]-1);
+        draw_line(c,p[0]+p[2]-1, p[1]+p[3]-1, p[0], p[1]+p[3]-1);
+        draw_line(c,p[0], p[1]+p[3]-1, p[0],p[1]);
+
+        if(incheck){
+            for(int x=p[0]+1; x<p[0]+p[2]-1; x++){
+                for(int y=p[1]+1; y<p[1]+p[3]-1; y++){
+                    if(0<=x && x< c->width && 0<= y && y < c->height){
+                        c->canvas[x][y]=' ';
+                        c->colormap[x][y]=incolor;
+                    }
+                }
+            }
+        }
         return RECT;
     }
 
     if(strcmp(s,"tri")==0){
         int p[4] = {0}; // p[0]:x0 , p[1]: y0, p[2]: width, p[3]: height
         char *b[4];
+        char *color;
+        int incheck=0;
+        int incolor=0;
         for (int i = 0 ; i < 4; i++){
             b[i] = strtok(NULL, " ");
             if (b[i] == NULL){
                 return ERRLACKARGS;
+            }
+        }
+        if((color=strtok(NULL, ""))!=NULL){
+            char colorlist[8]={'k','r','g','y','b','m','c','w'};
+            int colornum[8]={40,41,42,43,44,45,46,47};
+            for(int i=0; i<8; i++){
+                if(color[0]==colorlist[i]){
+                    incolor=colornum[i];
+                    incheck=1;
+                    break;
+                }
+            }
+            if(!incheck){
+                return NOCOLOR;
             }
         }
         for (int i = 0 ; i < 4 ; i++){
@@ -349,10 +398,24 @@ Result interpret_command(const char *command, History *his, Canvas *c)
             }
             p[i] = (int)v;
         }
+        if(incheck){
+            int n = max(p[2]/2, p[3]-1);
+            for (int i = 1; i <= n; i++) {
+                int minx = p[0] - i * p[2]/2 / n;
+                int maxx = p[0] + i * p[2]/2 /n;
+                int y = p[1] + i * (p[3]-1) / n;
+                for(int x=minx+1; x<maxx; x++){
+                    if(0<=x && x< c->width && 0<= y && y < c->height){
+                        c->canvas[x][y]=' ';
+                        c->colormap[x][y]=incolor;
+                    }
+                }
+            }
+        }
 
-        draw_line(c,p[0],p[1],p[0]-p[2]/2, p[1]+p[3]);
-        draw_line(c,p[0],p[1],p[0]+p[2]/2, p[1]+p[3]);
-        draw_line(c,p[0]-p[2]/2, p[1]+p[3],p[0]+p[2]/2, p[1]+p[3]);
+        draw_line(c,p[0],p[1],p[0]-p[2]/2, p[1]+p[3]-1);
+        draw_line(c,p[0],p[1],p[0]+p[2]/2, p[1]+p[3]-1);
+        draw_line(c,p[0]-p[2]/2, p[1]+p[3]-1,p[0]+p[2]/2, p[1]+p[3]-1);
 
         return TRI;
     }
@@ -360,10 +423,28 @@ Result interpret_command(const char *command, History *his, Canvas *c)
     if(strcmp(s,"circle")==0){
         int p[4] = {0}; // p[0]: x0, p[1]: y0, p[2]: a(横), p[3]:b(縦) 
         char *b[4];
+        char *color;
+        int incheck=0;
+        int incolor=0;
         for (int i = 0 ; i < 4; i++){
             b[i] = strtok(NULL, " ");
             if (b[i] == NULL){
                 return ERRLACKARGS;
+            }
+        }
+        if((color=strtok(NULL, ""))!=NULL){
+            char colorlist[8]={'k','r','g','y','b','m','c','w'};
+            int colornum[8]={40,41,42,43,44,45,46,47};
+            
+            for(int i=0; i<8; i++){
+                if(color[0]==colorlist[i]){
+                    incolor=colornum[i];
+                    incheck=1;
+                    break;
+                }
+            }
+            if(!incheck){
+                return NOCOLOR;
             }
         }
         for (int i = 0 ; i < 4 ; i++){
@@ -374,7 +455,7 @@ Result interpret_command(const char *command, History *his, Canvas *c)
             }
             p[i] = (int)v;
         }
-        draw_circle(c,p[0],p[1],p[2],p[3]);
+        draw_circle(c,p[0],p[1],p[2],p[3], incolor);
         return CIRCLE;
     }
 
@@ -414,12 +495,12 @@ Result interpret_command(const char *command, History *his, Canvas *c)
 
     if(strcmp(s,"load")==0){
         FILE *fp;
-        char *tmp;
-        char *filename;
-        if((tmp=strtok(NULL, " "))==NULL){
+        char *ftmp;
+        char filename[100];
+        if((ftmp=strtok(NULL, " "))==NULL){
             strcpy(filename, "history.txt");
         }else{
-            strcpy(filename, tmp);
+            strcpy(filename, ftmp);
         }
         
         if((fp=fopen(filename, "r"))==NULL){
@@ -435,7 +516,7 @@ Result interpret_command(const char *command, History *his, Canvas *c)
                     break;
                 }
                 // LINEの場合はHistory構造体に入れる
-                if (r == LINE || r == RECT || r == CIRCLE) {
+                if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN || r == CHCOL) {
                     push_command(his,buf);
                 }
             }
