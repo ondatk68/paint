@@ -5,13 +5,17 @@
 #include <errno.h> // for error catch
 #include <math.h>
 
+
+
 // Structure for canvas
 typedef struct
 {
     int width;
     int height;
     char **canvas;
+    int **colormap;
     char pen;
+    int color;
 } Canvas;
 
 // Command 構造体と History構造体
@@ -40,7 +44,7 @@ void clear_command(void);
 void clear_screen(void);
 
 // enum for interpret_command results
-typedef enum res{ EXIT, LINE, RECT, TRI, CIRCLE, STAR, UNDO, LOAD, SAVE, CHPEN, UNKNOWN, ERRNONINT, ERRLACKARGS, NOCOMMAND, NOFILE} Result;
+typedef enum res{ EXIT, LINE, RECT, TRI, CIRCLE, STAR, UNDO, LOAD, SAVE, CHPEN, CHCOL, UNKNOWN, ERRNONINT, ERRLACKARGS, NOCOMMAND, NOFILE, NOCOLOR} Result;
 // Result 型に応じて出力するメッセージを返す
 char *strresult(Result res);
 
@@ -106,7 +110,7 @@ int main(int argc, char **argv)
         clear_command();
         printf("%s\n",strresult(r));
         // LINEの場合はHistory構造体に入れる
-        if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN ) {
+        if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN || r == CHCOL) {
             // [*]
             push_command(&his,buf);
         }
@@ -129,14 +133,22 @@ Canvas *init_canvas(int width,int height, char pen)
     new->width = width;
     new->height = height;
     new->canvas = (char **)malloc(width * sizeof(char *));
+    new->colormap = (int **)malloc(width * sizeof(int *));
     
     char *tmp = (char *)malloc(width*height*sizeof(char));
     memset(tmp, ' ', width*height*sizeof(char));
     for (int i = 0 ; i < width ; i++){
 	    new->canvas[i] = tmp + i * height;
     }
+
+    int *ctmp = (int *)malloc(width*height*sizeof(int));
+    memset(ctmp, 39, width*height*sizeof(char));
+    for (int i = 0 ; i < width ; i++){
+	    new->colormap[i] = ctmp + i * height;
+    }
     
     new->pen = pen;
+    new->color=39;
     return new;
 }
 
@@ -145,6 +157,7 @@ void reset_canvas(Canvas *c)
     const int width = c->width;
     const int height = c->height;
     c->pen='*';
+    c->color=39;
     memset(c->canvas[0], ' ', width*height*sizeof(char));
 }
 
@@ -154,6 +167,7 @@ void print_canvas(Canvas *c)
     const int height = c->height;
     const int width = c->width;
     char **canvas = c->canvas;
+    int **colormap = c->colormap;
     
     // 上の壁
     printf("+");
@@ -167,7 +181,9 @@ void print_canvas(Canvas *c)
         printf("|");
         for (int x = 0 ; x < width; x++){
             const char c = canvas[x][y];
+            printf("\x1b[%dm",colormap[x][y]);
             putchar(c);
+            printf("\x1b[39m");
         }
         printf("|\n");
     }
@@ -208,16 +224,19 @@ void draw_line(Canvas *c, const int x0, const int y0, const int x1, const int y1
     const int width = c->width;
     const int height = c->height;
     char pen = c->pen;
+    int color=c->color;
     
     const int n = max(abs(x1 - x0), abs(y1 - y0));
     if ( (x0 >= 0) && (x0 < width) && (y0 >= 0) && (y0 < height)){
         c->canvas[x0][y0] = pen;
+        c->colormap[x0][y0]=color;
     }
     for (int i = 1; i <= n; i++) {
         const int x = x0 + i * (x1 - x0) / n;
         const int y = y0 + i * (y1 - y0) / n;
         if ( (x >= 0) && (x< width) && (y >= 0) && (y < height)){
             c->canvas[x][y] = pen;
+            c->colormap[x][y] = color;
         }
     }
 }
@@ -226,10 +245,12 @@ void draw_circle(Canvas *c, const int x0, const int y0, const int a, const int b
     const int width = c->width;
     const int height = c->height;
     char pen=c->pen;
+    int color=c->color;
     for(int x=0; x<width; x++){
         for(int y=0; y<height; y++){
             if(pow(a-0.5,2) < pow(x-x0,2)+pow((y-y0)*a/b,2) && pow(x-x0,2)+pow((y-y0)*a/b,2)<pow(a+0.5,2)){
                 c->canvas[x][y]=pen;
+                c->colormap[x][y]=color;
             }
         }
     }
@@ -423,12 +444,38 @@ Result interpret_command(const char *command, History *his, Canvas *c)
         return LOAD;
     }
 
-    if(strcmp(s, "chpen")==0){
-        char *token=strtok(NULL, " ");
-        if(token!=NULL){
-            c->pen = token[0];
+    if(strcmp(s, "chpen")==0){   
+        char *pen;
+        pen = strtok(NULL, " ");
+        if (pen == NULL){
+            return ERRLACKARGS;
         }
+        c->pen=pen[0];  
+        
         return CHPEN;
+    }
+
+    if(strcmp(s,"chcol")==0){
+        char colorlist[8]={'k','r','g','y','b','m','c','w'};
+        int colornum[8]={30,31,32,33,34,35,36,37};
+        char *color;
+        if((color=strtok(NULL, ""))!=NULL){
+            int check=0;
+            for(int i=0; i<8; i++){
+                if(color[0]==colorlist[i]){
+                    c->color=colornum[i];
+                    check=1;
+                    break;
+                }
+            }
+            if(!check){
+                return NOCOLOR;
+            }
+        }else{
+            return ERRLACKARGS;
+        }
+
+        return CHCOL;
     }
     if (strcmp(s, "save") == 0) {
         s = strtok(NULL, " ");
@@ -514,6 +561,8 @@ char *strresult(Result res){
     return "successfully loaded";
     case CHPEN:
     return "pen changed";
+    case CHCOL:
+    return "color changed";
     case UNDO:
 	return "undo!";
     case UNKNOWN:
@@ -526,6 +575,8 @@ char *strresult(Result res){
 	return "No command in history";
     case NOFILE:
     return "no such file";
+    case NOCOLOR:
+    return "no such color: choose from {k,r,g,y,b,m,c,w}";
     }
     return NULL;
 }
