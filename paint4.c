@@ -44,7 +44,7 @@ void clear_command(void);
 void clear_screen(void);
 
 // enum for interpret_command results
-typedef enum res{ EXIT, LINE, RECT, TRI, CIRCLE, STAR, UNDO, LOAD, SAVE, CHPEN, CHCOL, UNKNOWN, ERRNONINT, ERRLACKARGS, NOCOMMAND, NOFILE, NOCOLOR} Result;
+typedef enum res{ EXIT, LINE, RECT, TRI, CIRCLE, STAR, UNDO, LOAD, SAVE, CHPEN, CHCOL, CLEAR, UNKNOWN, ERRNONINT, ERRLACKARGS, NOCOMMAND, NOFILE, NOCOLOR} Result;
 // Result 型に応じて出力するメッセージを返す
 char *strresult(Result res);
 
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
         clear_command();
         printf("%s\n",strresult(r));
         // LINEの場合はHistory構造体に入れる
-        if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN || r == CHCOL) {
+        if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN || r == CHCOL || r == CLEAR) {
             // [*]
             push_command(&his,buf);
         }
@@ -516,7 +516,7 @@ Result interpret_command(const char *command, History *his, Canvas *c)
                     break;
                 }
                 // LINEの場合はHistory構造体に入れる
-                if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN || r == CHCOL) {
+                if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN || r == CHCOL || r==CLEAR) {
                     push_command(his,buf);
                 }
             }
@@ -562,6 +562,10 @@ Result interpret_command(const char *command, History *his, Canvas *c)
         s = strtok(NULL, " ");
         save_history(s, his);
         return SAVE;
+    }
+    if(strcmp(s,"clear")==0){
+        reset_canvas(c);
+        return CLEAR;
     }
     
     if (strcmp(s, "undo") == 0) {
@@ -644,6 +648,8 @@ char *strresult(Result res){
     return "pen changed";
     case CHCOL:
     return "color changed";
+    case CLEAR:
+    return "cleared the campus";
     case UNDO:
 	return "undo!";
     case UNKNOWN:
