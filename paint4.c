@@ -399,7 +399,7 @@ Result interpret_command(const char *command, History *his, Canvas *c)
             p[i] = (int)v;
         }
         if(incheck){
-            int n = max(p[2]/2, p[3]-1);
+            int n = max(p[2]/2, abs(p[3]-1));
             for (int i = 1; i <= n; i++) {
                 int minx = p[0] - i * p[2]/2 / n;
                 int maxx = p[0] + i * p[2]/2 /n;
@@ -494,6 +494,8 @@ Result interpret_command(const char *command, History *his, Canvas *c)
     }
 
     if(strcmp(s,"load")==0){
+        char pen=c->pen;
+        int color=c->color;
         FILE *fp;
         char *ftmp;
         char filename[100];
@@ -506,6 +508,10 @@ Result interpret_command(const char *command, History *his, Canvas *c)
         if((fp=fopen(filename, "r"))==NULL){
 	        return NOFILE;
         }else{
+            c->pen='*';
+            push_command(his, "chpen *");
+            c->color=37;
+            push_command(his, "chcol w");
             while(1){
                 
                 if(fgets(buf, his->bufsize, fp) == NULL){
@@ -522,6 +528,15 @@ Result interpret_command(const char *command, History *his, Canvas *c)
             }
         }
         fclose(fp);
+        c->pen=pen;
+        char prevpen[8]="chpen  ";
+        prevpen[6]=pen;
+        push_command(his, prevpen);
+        char colorlist[8]={'k','r','g','y','b','m','c','w'};
+        c->color=color;
+        char prevcol[8]="chcol  ";
+        prevcol[6]=colorlist[color%10];
+        push_command(his, prevcol);
         return LOAD;
     }
 
