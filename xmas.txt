@@ -1,0 +1,21 @@
+chcol r
+rect 30 30 20 20 r
+chcol g
+tri 40 14 80 20 g
+tri 40 7 60 20 g
+tri 40 4 30 10 g
+chcol y
+star 40 2 4 2 
+chcol y
+circle 20 25 3 2 y
+circle 35 10 3 2 y
+circle 49 29 3 2 y
+circle 55 20 3 2 y
+chcol m
+circle 30 17 3 2 m
+circle 35 31 3 2 m
+circle 65 30 3 2 m
+chcol c
+circle 15 32 3 2 c
+circle 39 22 3 2 c
+circle 47 13 3 2 c
