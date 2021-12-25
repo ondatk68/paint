@@ -335,7 +335,7 @@ Result interpret_command(const char *command, History *his, Canvas *c)
     if(strcmp(s,"load")==0){
         FILE *fp;
         char *tmp;
-        char *filename;
+        char filename[100];
         if((tmp=strtok(NULL, " "))==NULL){
             strcpy(filename, "history.txt");
         }else{
@@ -355,7 +355,7 @@ Result interpret_command(const char *command, History *his, Canvas *c)
                     break;
                 }
                 // LINEの場合はHistory構造体に入れる
-                if (r == LINE || r == RECT || r == CIRCLE) {
+                if (r == LINE || r == RECT || r == CIRCLE || r == CHPEN) {
                     push_command(his,buf);
                 }
             }
