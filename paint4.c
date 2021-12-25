@@ -44,7 +44,7 @@ void clear_command(void);
 void clear_screen(void);
 
 // enum for interpret_command results
-typedef enum res{ EXIT, LINE, RECT, TRI, CIRCLE, STAR, UNDO, LOAD, SAVE, CHPEN, CHCOL, CLEAR, UNKNOWN, ERRNONINT, ERRLACKARGS, NOCOMMAND, NOFILE, NOCOLOR} Result;
+typedef enum res{ EXIT, LINE, RECT, TRI, CIRCLE, STAR, XMAS, UNDO, LOAD, SAVE, CHPEN, CHCOL, CLEAR, UNKNOWN, ERRNONINT, ERRLACKARGS, NOCOMMAND, NOFILE, NOCOLOR} Result;
 // Result 型に応じて出力するメッセージを返す
 char *strresult(Result res);
 
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
         clear_command();
         printf("%s\n",strresult(r));
         // LINEの場合はHistory構造体に入れる
-        if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN || r == CHCOL || r == CLEAR) {
+        if (r == LINE || r == RECT || r == TRI || r == STAR || r == XMAS || r == CIRCLE || r == CHPEN || r == CHCOL || r == CLEAR) {
             // [*]
             push_command(&his,buf);
         }
@@ -493,6 +493,42 @@ Result interpret_command(const char *command, History *his, Canvas *c)
         return STAR;
     }
 
+    if(strcmp(s,"xmas")==0){
+        char pen=c->pen;
+        int col=c->color;
+        char xmas[22][30]={
+            "chpen *",
+            "chcol r",
+            "rect 30 30 20 20 r",
+            "chcol g",
+            "tri 40 14 80 20 g",
+            "tri 40 7 60 20 g",
+            "tri 40 4 30 10 g",
+            "chcol y",
+            "star 40 2 4 2", 
+            "chcol y",
+            "circle 20 25 3 2 y",
+            "circle 35 10 3 2 y",
+            "circle 49 29 3 2 y",
+            "circle 55 20 3 2 y",
+            "chcol m",
+            "circle 30 17 3 2 m",
+            "circle 35 31 3 2 m",
+            "circle 65 30 3 2 m",
+            "chcol c",
+            "circle 15 32 3 2 c",
+            "circle 39 22 3 2 c",
+            "circle 47 13 3 2 c"
+        };
+        for(int i=0; i<22; i++){
+            interpret_command(xmas[i], his, c);
+        }
+        c->pen=pen;
+        c->color=col;
+
+        return XMAS;
+    }
+
     if(strcmp(s,"load")==0){
         char pen=c->pen;
         int color=c->color;
@@ -522,7 +558,7 @@ Result interpret_command(const char *command, History *his, Canvas *c)
                     break;
                 }
                 // LINEの場合はHistory構造体に入れる
-                if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == CHPEN || r == CHCOL || r==CLEAR) {
+                if (r == LINE || r == RECT || r == TRI || r == STAR || r == CIRCLE || r == XMAS || r == CHPEN || r == CHCOL || r==CLEAR) {
                     push_command(his,buf);
                 }
             }
@@ -657,6 +693,8 @@ char *strresult(Result res){
     return "1 circle drawn";
     case STAR:
     return "1 star drawn";
+    case XMAS:
+    return "\x1b[33mMerry Christmas!!\x1b[39m";
     case LOAD:
     return "successfully loaded";
     case CHPEN:
