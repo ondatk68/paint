@@ -142,13 +142,13 @@ Canvas *init_canvas(int width,int height, char pen)
     }
 
     int *ctmp = (int *)malloc(width*height*sizeof(int));
-    memset(ctmp, 0, width*height*sizeof(char));
+    memset(ctmp, 37, width*height*sizeof(char));
     for (int i = 0 ; i < width ; i++){
 	    new->colormap[i] = ctmp + i * height;
     }
     
     new->pen = pen;
-    new->color=0;
+    new->color=37;
     return new;
 }
 
@@ -157,9 +157,9 @@ void reset_canvas(Canvas *c)
     const int width = c->width;
     const int height = c->height;
     c->pen='*';
-    c->color=0;
+    c->color=37;
     memset(c->canvas[0], ' ', width*height*sizeof(char));
-    memset(c->colormap[0], 0, width*height*sizeof(int));
+    memset(c->colormap[0], 37, width*height*sizeof(int));
 }
 
 
@@ -545,9 +545,9 @@ Result interpret_command(const char *command, History *his, Canvas *c)
 	        return NOFILE;
         }else{
             c->pen='*';
-            push_command(his, "chpen *");
+            push_command(his, "chpen *\n");
             c->color=37;
-            push_command(his, "chcol w");
+            push_command(his, "chcol w\n");
             while(1){
                 
                 if(fgets(buf, his->bufsize, fp) == NULL){
@@ -565,12 +565,12 @@ Result interpret_command(const char *command, History *his, Canvas *c)
         }
         fclose(fp);
         c->pen=pen;
-        char prevpen[8]="chpen  ";
+        char prevpen[9]="chpen  \n";
         prevpen[6]=pen;
         push_command(his, prevpen);
         char colorlist[8]={'k','r','g','y','b','m','c','w'};
         c->color=color;
-        char prevcol[8]="chcol  ";
+        char prevcol[9]="chcol  \n";
         prevcol[6]=colorlist[color%10];
         push_command(his, prevcol);
         return LOAD;
