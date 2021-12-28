@@ -304,10 +304,10 @@ Result interpret_command(const char *command, History *his, Canvas *c)
             }
             p[i] = (int)v;
         }
-        draw_line(c,p[0],p[1],p[0]+p[2], p[1]);
-        draw_line(c,p[0]+p[2], p[1],p[0]+p[2], p[1]+p[3]);
-        draw_line(c,p[0]+p[2], p[1]+p[3], p[0], p[1]+p[3]);
-        draw_line(c,p[0], p[1]+p[3], p[0],p[1]);
+        draw_line(c,p[0],p[1],p[0]+p[2]-1, p[1]);
+        draw_line(c,p[0]+p[2]-1, p[1],p[0]+p[2]-1, p[1]+p[3]-1);
+        draw_line(c,p[0]+p[2]-1, p[1]+p[3]-1, p[0], p[1]+p[3]-1);
+        draw_line(c,p[0], p[1]+p[3]-1, p[0],p[1]);
         return RECT;
     }
 
